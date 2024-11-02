@@ -1,39 +1,22 @@
 # temp-mail
 
-This template should help get you started developing with Vue 3 in Vite.
+使用 Vue 3 和 Element Plus 開發的臨時郵箱應用。
 
-## Recommended IDE Setup
+## 功能
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- 登入
+- 查看郵件
+- 刪除郵件
+- 複製郵箱地址
 
-## Type Support for `.vue` Imports in TS
+## 技術
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+- Vue 3
+- Element Plus
+- Vue Router
+- Pinia
+- Axios
 
-## Customize configuration
+## 參考
 
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Type-Check, Compile and Minify for Production
-
-```sh
-npm run build
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
+- [Mail.gw](https://docs.mail.gw/)
