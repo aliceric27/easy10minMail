@@ -16,14 +16,15 @@ let messageInterval: number | null = null
 const startMessagePolling = () => {
   messageInterval = window.setInterval(() => {
     mailStore.fetchMessages()
-  }, 8000)
+  }, 20000)
 }
 
 const handleManualRefresh = async () => {
   if (refreshDisabled.value) return
   
   refreshDisabled.value = true
-  await mailStore.fetchMessages()
+  currentPage.value = 1
+  await mailStore.fetchMessages(1)
   setTimeout(() => {
     refreshDisabled.value = false
   }, 8000)
@@ -137,8 +138,7 @@ const toggleMessage = async (messageId: string) => {
   
   try {
     selectedMessageId.value = messageId
-    const messageDetail = await mailStore.fetchMessageDetail(messageId)
-    selectedMessageContent.value = messageDetail
+    selectedMessageContent.value = mailStore.messageContents.get(messageId)
   } catch (err) {
     console.error('獲取郵件詳情失敗:', err)
     selectedMessageId.value = null
@@ -151,6 +151,28 @@ const showNotification = (message: string, type: string = 'success') => {
     type: type as 'success' | 'warning' | 'info' | 'error' ,
     duration: 3000
   })
+}
+
+const currentPage = ref(1)
+
+const handlePageChange = async (page: number) => {
+  selectedMessageId.value = null
+  await mailStore.fetchMessages(page)
+}
+
+const dialogVisible = ref(false)
+const currentMessage = ref<any>(null)
+const currentMessageContent = ref<any>(null)
+
+const showMessageDetail = (messageId: string) => {
+  const message = mailStore.messages.find(m => m.id === messageId)
+  const content = mailStore.messageContents.get(messageId)
+  
+  if (message && content) {
+    currentMessage.value = message
+    currentMessageContent.value = content
+    dialogVisible.value = true
+  }
 }
 </script>
 
@@ -248,15 +270,73 @@ const showNotification = (message: string, type: string = 'success') => {
           </div>
         </template>
 
-        <el-table :data="mailStore.messages">
-          <el-table-column prop="from.address" label="寄件人" />
-          <el-table-column prop="subject" label="主旨" />
+        <el-table 
+          :data="mailStore.messages" 
+          v-loading="mailStore.refreshing"
+          style="width: 100%"
+        >
+          <el-table-column prop="from.address" label="寄件人">
+            <template #default="scope">
+              {{ scope.row.from?.address || '未知寄件人' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="subject" label="主旨">
+            <template #default="scope">
+              {{ scope.row.subject || '(無主旨)' }}
+            </template>
+          </el-table-column>
           <el-table-column label="時間">
             <template #default="scope">
               {{ new Date(scope.row.createdAt).toLocaleString() }}
             </template>
           </el-table-column>
+          <el-table-column label="操作" width="120">
+            <template #default="scope">
+              <el-button
+                link
+                type="primary"
+                size="small"
+                @click="showMessageDetail(scope.row.id)"
+              >
+                查看
+              </el-button>
+            </template>
+          </el-table-column>
         </el-table>
+
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="currentPage"
+            :page-size="mailStore.pagination.pageSize"
+            :total="mailStore.pagination.total"
+            @current-change="handlePageChange"
+            layout="prev, pager, next"
+            background
+          />
+        </div>
+
+        <el-dialog
+          v-model="dialogVisible"
+          :title="currentMessage?.subject || '(無主旨)'"
+          width="60%"
+          destroy-on-close
+        >
+          <div class="email-detail">
+            <div class="email-header">
+              <div class="email-info">
+                <p><strong>寄件人：</strong>{{ currentMessage?.from?.address }}</p>
+                <p><strong>收件人：</strong>{{ currentMessage?.to?.[0]?.address }}</p>
+                <p><strong>時間：</strong>{{ new Date(currentMessage?.createdAt || '').toLocaleString() }}</p>
+              </div>
+            </div>
+            <el-divider />
+            <div class="email-content" v-if="currentMessageContent">
+              <div v-if="currentMessageContent.html?.[0]" v-html="currentMessageContent.html[0]"></div>
+              <pre v-else-if="currentMessageContent.text" class="plain-text">{{ currentMessageContent.text }}</pre>
+              <div v-else class="no-content">(無內容)</div>
+            </div>
+          </div>
+        </el-dialog>
       </el-card>
     </el-main>
   </el-container>
@@ -271,5 +351,56 @@ const showNotification = (message: string, type: string = 'success') => {
 
 .messages-section {
   margin-top: 30px;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.email-detail {
+  padding: 0 20px;
+}
+
+.email-header {
+  margin-bottom: 20px;
+}
+
+.email-info p {
+  margin: 8px 0;
+  color: #606266;
+}
+
+.email-content {
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 4px;
+  min-height: 200px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.plain-text {
+  white-space: pre-wrap;
+  font-family: monospace;
+  margin: 0;
+  color: #606266;
+}
+
+.no-content {
+  color: #909399;
+  text-align: center;
+  padding: 40px 0;
+}
+
+:deep(.el-dialog__body) {
+  padding: 20px 0;
+}
+
+:deep(.el-dialog__header) {
+  padding: 20px;
+  margin-right: 0;
+  border-bottom: 1px solid #EBEEF5;
 }
 </style>

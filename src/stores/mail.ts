@@ -33,6 +33,12 @@ interface MailState {
   selectedMessage: Message | null
   isTokenValid: boolean
   password: string
+  messageContents: Map<string, any>
+  pagination: {
+    page: number
+    pageSize: number
+    total: number
+  }
 }
 
 interface StoredData {
@@ -55,7 +61,13 @@ export const useMailStore = defineStore('mail', {
     token: null,
     selectedMessage: null,
     isTokenValid: false,
-    password: ''
+    password: '',
+    messageContents: new Map<string, any>(),
+    pagination: {
+      page: 1,
+      pageSize: 10,
+      total: 0
+    }
   }),
   
   actions: {
@@ -159,24 +171,33 @@ export const useMailStore = defineStore('mail', {
       }
     },
 
-    async fetchMessages() {
-      if (!this.account || !this.token) return
-      
-      this.refreshing = true
+    async fetchMessages(page = 1) {
       try {
-        const response = await fetch('https://api.mail.gw/messages', {
+        this.refreshing = true
+        const response = await fetch(`https://api.mail.gw/messages?page=${page}&itemsPerPage=${this.pagination.pageSize}`, {
           headers: {
             'Authorization': `Bearer ${this.token}`,
             'Content-Type': 'application/json'
           }
         })
-        
+
         if (!response.ok) {
           throw new Error('獲取郵件失敗')
         }
-        
+
         const data = await response.json()
         this.messages = data['hydra:member']
+        this.pagination.total = data['hydra:totalItems'] || 0
+        this.pagination.page = page
+        
+        // 只獲取當前頁郵件的詳細內容
+        for (const message of this.messages) {
+          if (!this.messageContents.has(message.id)) {
+            const content = await this.fetchMessageDetail(message.id)
+            this.messageContents.set(message.id, content)
+          }
+        }
+
       } catch (error) {
         console.error('獲取郵件錯誤:', error)
         throw error
