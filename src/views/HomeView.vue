@@ -41,6 +41,10 @@ const handleDeleteAccount = async () => {
     }
   ).then(async () => {
     try {
+      if (messageInterval) {
+        clearInterval(messageInterval)
+        messageInterval = null
+      }
       await mailStore.deleteAccount()
       const { username: randomUsername, password: randomPassword } = mailStore.generateRandomAccount()
       username.value = randomUsername
@@ -68,7 +72,6 @@ onMounted(async () => {
       
       if (await mailStore.checkToken()) {
         await mailStore.fetchMessages()
-        startMessagePolling()
       } else {
         mailStore.clearAccountData()
         initializeRandomAccount()
@@ -103,7 +106,7 @@ const getFullAddress = () => {
 const copyAddress = async () => {
   try {
     await navigator.clipboard.writeText(getFullAddress())
-    showNotification('郵箱地址已複製!', 'warning')
+    showNotification('信箱地址已複製!', 'warning')
   } catch (err) {
     showNotification('複製失敗', 'is-danger')
     console.error('複製失敗:', err)
@@ -181,11 +184,11 @@ const showMessageDetail = (messageId: string) => {
     <el-main>
       <el-card class="form">
         <template #header>
-          <h1>創建臨時郵箱帳戶</h1>
+          <h1>創建臨時信箱</h1>
         </template>
 
         <el-form label-width="80px">
-          <el-form-item label="郵箱:">
+          <el-form-item label="信箱:">
             <div style="display: flex; align-items: center; gap: 10px">
               <el-input
                 v-model="username"
